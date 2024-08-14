@@ -35,6 +35,27 @@ func isNil(i any) bool {
 	return false
 }
 
+func DoThunk[T any](th func() T)T{
+	var zt T
+	a := &[1]T{zt}
+  doThunk(a, th)
+	return a[0]
+}
+
+func doThunk[T any](a *[1]T,th func() T){
+	var z T
+	defer func() {
+		if r := recover(); r != nil {
+			a[0] = z
+		}
+	}()
+	a[0] = th()
+	if isNil(a[0]) {
+		a[0] = z
+	}
+}
+
+
 // ArrGet retrieves the element at the specified index from a slice.
 // Negative indices count from the end of the slice.
 func ArrGet[T any](slice []T, index int, defaultValue ...T) T {
@@ -84,7 +105,7 @@ func ArrGetFrom[T any](slice []T, index int, defaultFn func() T) T {
 func arrGetFrom[T any](a *[1]T, slice []T, index int, defaultFn func() T) {
 	defer func() {
 		if r := recover(); r != nil {
-			a[0] = defaultFn()
+			a[0] = DoThunk(defaultFn)
 		}
 	}()
 	n := len(slice)
@@ -92,12 +113,12 @@ func arrGetFrom[T any](a *[1]T, slice []T, index int, defaultFn func() T) {
 		index = n + index
 	}
 	if index < 0 || index >= n {
-		a[0] = defaultFn()
+		a[0] = DoThunk(defaultFn)
 		return
 	}
 	a[0] = slice[index]
 	if isNil(a[0]) {
-		a[0] = defaultFn()
+		a[0] = DoThunk(defaultFn)
 	}
 }
 
@@ -184,12 +205,12 @@ func MapGetFrom[K comparable, V any](m map[K]V, key K, defaultFn func() V) V {
 func mapGetFrom[K comparable, V any](a *[1]V, m map[K]V, key K, defaultFn func() V) {
 	defer func() {
 		if r := recover(); r != nil {
-			a[0] = defaultFn()
+			a[0] = DoThunk(defaultFn)
 		}
 	}()
 	a[0] = m[key]
 	if isNil(a[0]) {
-		a[0] = defaultFn()
+		a[0] = DoThunk(defaultFn)
 	}
 }
 
@@ -216,6 +237,36 @@ func deref[T any](t *[1]T, ptr *T, defaultValue T) {
 	t[0] = *ptr
 	if isNil(t[0]) {
 		t[0] = defaultValue
+	}
+}
+
+func DerefSlice[T any](t *[]T) []T {
+	return DerefFrom(t, func()[]T{ return []T{}})
+}
+
+func DerefMap[K comparable, V any](m *map[K]V) map[K]V {
+	return DerefFrom(m, func() map[K]V { return make(map[K]V) })
+}
+
+func DerefFrom[T any](ptr *T,  defaultFn func()T) T {
+	var zt T
+	t := &[1]T{zt}
+	derefFrom(t, ptr, defaultFn)
+	return t[0]
+}
+func derefFrom[T any](t *[1]T, ptr *T, defaultFn func()T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t[0] = DoThunk(defaultFn)
+		}
+	}()
+	if ptr == nil {
+		t[0] = DoThunk(defaultFn)
+		return
+	}
+	t[0] = *ptr
+	if isNil(t[0]) {
+		t[0] = DoThunk(defaultFn)
 	}
 }
 
@@ -266,7 +317,45 @@ func unface[T any](t *[1]T, val interface{}, defaultValue T) {
 	}
 }
 
+type sliceFace[T any] interface{
+	~[]T
+}
 
+func UnfaceSlice[T any, S sliceFace[T]](t S) []T {
+	return UnfaceFrom(t, func()[]T{ return []T{}})
+}
+
+type mapFace[K comparable, V any] interface{
+	~map[K]V
+}
+
+func UnfaceMap[K comparable, V any,M mapFace[K,V]](m M) map[K]V {
+	return UnfaceFrom(m, func() map[K]V { return make(map[K]V) })
+}
+
+func UnfaceFrom[T any](val interface{}, defaultFn func()T) T {
+	var zt T
+	t := &[1]T{zt}
+	unfaceFrom(t, val, defaultFn)
+	return t[0]
+}
+func unfaceFrom[T any](t *[1]T, val interface{}, defaultFn func()T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t[0] = DoThunk(defaultFn)
+		}
+	}()
+	if val == nil {
+		t[0] = DoThunk(defaultFn)
+		return
+	}
+	switch v := val.(type) {
+	case T:
+		t[0] = v
+	default:
+		t[0] = DoThunk(defaultFn)
+	}
+}
 
 func Face[T any](val T) interface{} {
 	var zt T
