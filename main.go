@@ -193,7 +193,7 @@ func mapGetFrom[K comparable, V any](a *[1]V, m map[K]V, key K, defaultFn func()
 	}
 }
 
-// Deref dereferences a pointer to get the value it points to, or returns defaultValue if the pointer is nil.
+// Deref dereferences( a pointer to get the value it points to, or returns defaultValue if the pointer is nil.
 func Deref[T any](ptr *T, defaultValue ...T) T {
 	var zt T
 	if len(defaultValue) > 0 {
@@ -219,6 +219,24 @@ func deref[T any](t *[1]T, ptr *T, defaultValue T) {
 	}
 }
 
+func Ref[T any](val T) *T {
+	var zt T
+	t := &[1]*T{&zt}
+	ref(t,val,zt)
+	return t[0]
+}
+func ref[T any](t *[1]*T,val T, defaultValue T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t[0] = &defaultValue
+		}
+	}()
+	t[0] = &val
+	if isNil(t[0]) {
+		t[0] = &defaultValue
+	}
+}
+
 // Unface retrieves a value from an interface based on its type,
 // or returns the user-provided defaultValue if the interface is nil or not of the expected type.
 func Unface[T any](val interface{}, defaultValue ...T) T {
@@ -231,6 +249,32 @@ func Unface[T any](val interface{}, defaultValue ...T) T {
 	return t[0]
 }
 func unface[T any](t *[1]T, val interface{}, defaultValue T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t[0] = defaultValue
+		}
+	}()
+	if val == nil {
+		t[0] = defaultValue
+		return
+	}
+	switch v := val.(type) {
+	case T:
+		t[0] = v
+	default:
+		t[0] = defaultValue
+	}
+}
+
+
+
+func Face[T any](val T) interface{} {
+	var zt T
+	t := &[1]T{zt}
+	face(t, val, zt)
+	return t[0]
+}
+func face[T any](t *[1]T, val interface{}, defaultValue T) {
 	defer func() {
 		if r := recover(); r != nil {
 			t[0] = defaultValue
