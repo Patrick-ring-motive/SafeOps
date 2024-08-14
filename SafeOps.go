@@ -1,4 +1,5 @@
-package main
+//package main
+package SafeOps
 
 import (
 	"fmt"
@@ -9,7 +10,7 @@ func asAny(a any) any { return a }
 func main() {
 	fmt.Println("cheese")
 	var arr []int
-	value := ArrGet(arr, 2, 0) // Returns 0, as the array is nil
+	value := ArrGet(arr, 2) // Returns 0, as the array is nil
 	fmt.Println(value)
 
 	var m map[string]int
@@ -17,11 +18,11 @@ func main() {
 	fmt.Println(mapValue)
 
 	var ptr *float64
-	dereferencedValue := Deref(ptr, 0.0) // Returns 0.0, as the pointer is nil
+	dereferencedValue := Deref(ptr) // Returns 0.0, as the pointer is nil
 	fmt.Println(dereferencedValue)
 
 	var iface interface{} = "hello"
-	unfacedValue := Unface[int](iface, 10) // Returns 10, as the type does not match
+	unfacedValue := Unface[int](iface) // Returns 10, as the type does not match
 	fmt.Println(unfacedValue)
 
 }
